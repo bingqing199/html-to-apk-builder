@@ -1,0 +1,75 @@
+
+name: Build APK from HTML
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'index.html'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Cordova
+        run: npm install -g cordova@12
+
+      - name: Create Android project
+        run: |
+          cordova create myapp com.bingqing.htmlapp "My HTML App"
+          cd myapp
+          cordova platform add android@13
+
+      - name: Copy HTML
+        run: |
+          cp index.html myapp/www/index.html
+
+      - name: Configure Android permissions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("myapp/config.xml")
+          s = p.read_text()
+          s = s.replace(
+              "</widget>",
+              '    <access origin="*" />\n'
+              '    <allow-navigation href="https://*/*" />\n'
+              '    <allow-navigation href="http://*/*" />\n'
+              '</widget>'
+          )
+          p.write_text(s)
+          PY
+
+      - name: Build Debug APK
+        run: |
+          cd myapp
+          cordova build android --debug -- --packageType=apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: My-HTML-Android-APK
+          path: myapp/platforms/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
