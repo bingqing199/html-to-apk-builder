@@ -42,7 +42,7 @@ jobs:
 
       - name: Create Android project
         run: |
-          cordova create myapp com.bingqing.htmlapp "My HTML App"
+          cordova create myapp com.bingqing.htmlapp "My Website App"
           cd myapp
           cordova platform add android@13
 
@@ -50,19 +50,22 @@ jobs:
         run: |
           cp index.html myapp/www/index.html
 
-      - name: Configure Android permissions
+      - name: Configure WebView navigation
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           p = Path("myapp/config.xml")
           s = p.read_text()
+
           s = s.replace(
               "</widget>",
-              '    <access origin="*" />\n'
+              '    <access origin="https://*" />\n'
               '    <allow-navigation href="https://*/*" />\n'
-              '    <allow-navigation href="http://*/*" />\n'
+              '    <preference name="AndroidInsecureFileModeEnabled" value="false" />\n'
               '</widget>'
           )
+
           p.write_text(s)
           PY
 
@@ -74,6 +77,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: My-HTML-Android-APK
+          name: My-Website-Android-APK
           path: myapp/platforms/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
